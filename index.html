@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUEST | Login System</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #943ddf;
+            --bg-dark: #0e0e0e; 
+            --bg-surface: #1e1e1e;
+            --text-main: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .input-gemini {
+            background: #2a2a2a;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+            color: white;
+        }
+        .input-gemini:focus {
+            background: #1e1e1e;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(148, 61, 223, 0.2);
+            outline: none;
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #FFF;
+            border-bottom-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- LOADER OVERLAY -->
+    <div id="loading-overlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0e0e0e]">
+        <span class="loader mb-4"></span>
+        <h2 class="text-xl font-bold tracking-widest text-gray-400 uppercase">Quest</h2>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- MAIN APP -->
+    <div id="app-container" class="flex-1 flex flex-col hidden h-full">
+        
+        <!-- HEADER -->
+        <header id="main-header" class="h-16 border-b border-white/5 bg-[#0e0e0e]/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-40 hidden">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#943ddf] to-purple-900 flex items-center justify-center">
+                    <i class="fas fa-bolt text-white text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wider">QUEST</h1>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest -mt-1">Uploop Studio</p>
+                </div>
+            </div>
+
+            <div id="user-profile-display" class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <div id="header-username" class="font-medium text-sm">Utente</div>
+                    <div id="header-role" class="text-xs text-[#943ddf] font-bold uppercase">Ruolo</div>
+                </div>
+                <img id="header-avatar" src="" class="w-9 h-9 rounded-full border border-gray-700 bg-gray-800 object-cover">
+                
+                <button id="btn-admin-panel" onclick="app.showAdmin()" class="w-9 h-9 rounded-full bg-white/5 hover:bg-[#943ddf] text-gray-400 hover:text-white transition-all hidden flex items-center justify-center">
+                    <i class="fas fa-shield-halved"></i>
+                </button>
+                
+                <button onclick="app.logout()" class="text-gray-500 hover:text-white transition-colors ml-2">
+                    <i class="fas fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-hidden relative">
+            
+            <!-- VIEW: LOGIN (Default) -->
+            <section id="view-login" class="view-section absolute inset-0 flex items-center justify-center p-6 hidden">
+                <div class="glass-panel p-8 rounded-2xl max-w-sm w-full shadow-2xl fade-in">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-[#943ddf] rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg">
+                            <i class="fas fa-lock text-2xl text-white"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Accesso</h2>
+                        <p class="text-gray-400 text-sm">Inserisci le tue credenziali</p>
+                    </div>
+                    <form onsubmit="app.handleLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 uppercase mb-1 ml-1">Username</label>
+                            <input type="text" id="login-username" required class="input-gemini w-full p-3 rounded-xl" placeholder="es. test">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 uppercase mb-1 ml-1">Password</label>
+                            <input type="password" id="login-password" required class="input-gemini w-full p-3 rounded-xl" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full bg-[#943ddf] hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all transform hover:scale-[1.02]">
+                            Entra in Quest
+                        </button>
+                    </form>
+                    <p class="text-center text-[10px] text-gray-600 mt-6 uppercase tracking-widest">Powered by U-ENGINE 2.0</p>
+                </div>
+            </section>
+
+            <!-- VIEW: BOARD -->
+            <section id="view-board" class="view-section absolute inset-0 overflow-hidden flex flex-col hidden">
+                <div class="p-6 border-b border-white/5 flex justify-between items-end bg-[#0e0e0e]/50 backdrop-blur-sm z-20">
+                    <div>
+                        <div class="text-xs text-[#943ddf] uppercase tracking-wider font-bold mb-1" id="board-context-info">Dipartimento / Team</div>
+                        <h2 class="text-2xl font-bold text-white">Workflow Board</h2>
+                    </div>
+                    <button id="btn-new-task" onclick="app.openTaskModal()" class="bg-[#943ddf] hover:bg-[#7e34bd] text-white px-5 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-all">
+                        <i class="fas fa-plus"></i> Nuova Task
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-x-auto p-6">
+                    <div class="flex gap-6 h-full min-w-[1000px]">
+                        <!-- Columnas -->
+                        <div class="flex-1 flex flex-col h-full bg-[#161616] rounded-xl border border-white/5">
+                            <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                                <h3 class="font-semibold text-gray-400">DA FARE</h3>
+                                <span class="bg-white/5 text-xs px-2 py-1 rounded text-gray-500" id="count-todo">0</span>
+                            </div>
+                            <div class="flex-1 p-3 overflow-y-auto space-y-3" id="col-todo" ondragover="app.allowDrop(event)" ondrop="app.drop(event, 'todo')"></div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col h-full bg-[#161616] rounded-xl border border-white/5">
+                            <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                                <h3 class="font-semibold text-[#943ddf]">IN CORSO</h3>
+                                <span class="bg-[#943ddf]/10 text-xs px-2 py-1 rounded text-[#943ddf]" id="count-doing">0</span>
+                            </div>
+                            <div class="flex-1 p-3 overflow-y-auto space-y-3" id="col-doing" ondragover="app.allowDrop(event)" ondrop="app.drop(event, 'doing')"></div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col h-full bg-[#161616] rounded-xl border border-white/5">
+                            <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                                <h3 class="font-semibold text-green-500">COMPLETATO</h3>
+                                <span class="bg-green-900/10 text-xs px-2 py-1 rounded text-green-500" id="count-done">0</span>
+                            </div>
+                            <div class="flex-1 p-3 overflow-y-auto space-y-3" id="col-done" ondragover="app.allowDrop(event)" ondrop="app.drop(event, 'done')"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: ADMIN -->
+            <section id="view-admin" class="view-section absolute inset-0 overflow-y-auto p-6 md:p-12 hidden">
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <button onclick="app.showBoard()" class="text-gray-500 hover:text-white flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Torna alla Board
+                        </button>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">Admin Dashboard</h2>
+                    </div>
+
+                    <div id="admin-tabs" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- User Management -->
+                        <div class="glass-panel p-6 rounded-xl h-fit">
+                            <h3 class="text-lg font-semibold mb-6">Gestione Utenti</h3>
+                            <form onsubmit="app.handleUserSave(event)" id="admin-form" class="space-y-4">
+                                <input type="hidden" id="admin-uid">
+                                
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 uppercase mb-1">Nome Visualizzato</label>
+                                    <input type="text" id="admin-displayname" required class="input-gemini w-full p-2.5 rounded text-sm">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 uppercase mb-1">Username</label>
+                                        <input type="text" id="admin-username" required class="input-gemini w-full p-2.5 rounded text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 uppercase mb-1">Password</label>
+                                        <input type="text" id="admin-password" required class="input-gemini w-full p-2.5 rounded text-sm">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 uppercase mb-1">Dipartimento</label>
+                                        <select id="admin-dept" required class="input-gemini w-full p-2.5 rounded text-sm"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 uppercase mb-1">Squadra</label>
+                                        <select id="admin-team" required class="input-gemini w-full p-2.5 rounded text-sm"></select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 uppercase mb-1">Ruolo</label>
+                                    <select id="admin-role" class="input-gemini w-full p-2.5 rounded text-sm">
+                                        <option value="user">User (Sola Lettura)</option>
+                                        <option value="admin">Admin (Controllo Totale)</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex gap-2 pt-4">
+                                    <button type="button" onclick="app.resetAdminForm()" class="flex-1 py-2 rounded bg-gray-700 text-xs">Reset</button>
+                                    <button type="submit" class="flex-[2] py-2 rounded bg-[#943ddf] text-white font-bold text-sm">Salva</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- User List Table -->
+                        <div class="glass-panel p-0 rounded-xl lg:col-span-2 overflow-hidden flex flex-col">
+                            <div class="p-4 bg-white/5 border-b border-white/5 font-semibold text-sm">Lista Utenti Database</div>
+                            <div class="overflow-y-auto max-h-[500px]">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-black/20 text-gray-500 uppercase text-[10px]">
+                                        <tr>
+                                            <th class="p-4">Utente / Username</th>
+                                            <th class="p-4">Posizione</th>
+                                            <th class="p-4">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-table-body" class="divide-y divide-white/5"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL TASK -->
+    <div id="modal-task" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-[#1e1e1e] border border-white/10 w-full max-w-lg rounded-2xl shadow-2xl p-6">
+            <div class="flex justify-between items-start mb-6">
+                <h3 class="text-xl font-bold" id="modal-task-title">Nuova Task</h3>
+                <button onclick="app.closeModal()" class="text-gray-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="app.handleTaskSubmit(event)" id="form-task" class="space-y-4">
+                <input type="hidden" id="task-id">
+                <div id="task-readonly-notice" class="hidden p-3 bg-blue-900/20 border border-blue-500/30 rounded text-blue-300 text-xs">
+                    <i class="fas fa-info-circle mr-1"></i> Visualizzazione Sola Lettura.
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 uppercase mb-1">Titolo</label>
+                    <input type="text" id="task-title" required class="input-gemini w-full p-3 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 uppercase mb-1">Descrizione</label>
+                    <textarea id="task-desc" rows="3" class="input-gemini w-full p-3 rounded-lg text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-500 uppercase mb-1">Assegna a</label>
+                        <select id="task-assignee" class="input-gemini w-full p-2.5 rounded-lg text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 uppercase mb-1">Stato</label>
+                        <select id="task-status" class="input-gemini w-full p-2.5 rounded-lg text-sm">
+                            <option value="todo">Da Fare</option>
+                            <option value="doing">In Corso</option>
+                            <option value="done">Completato</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-6 border-t border-white/5" id="task-modal-actions">
+                    <button type="button" id="btn-delete-task" onclick="app.deleteTask()" class="mr-auto text-red-500 text-sm hidden">Elimina</button>
+                    <button type="button" onclick="app.closeModal()" class="px-4 py-2 text-gray-400 text-sm">Annulla</button>
+                    <button type="submit" id="btn-save-task" class="bg-[#943ddf] text-white px-6 py-2 rounded-lg text-sm font-bold">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+      <!-- SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDoc, setDoc, getDocs, doc, updateDoc, deleteDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBSwVukyXSBaOwGfBZvWe-vZJE6Mf7hjcY",
+            authDomain: "ul-quest.firebaseapp.com",
+            projectId: "ul-quest",
+            storageBucket: "ul-quest.firebasestorage.app",
+            messagingSenderId: "249009917994",
+            appId: "1:249009917994:web:6a1f0eb076784a8283b353"
+        };
+
+        const fApp = initializeApp(firebaseConfig);
+        const db = getFirestore(fApp);
+        const auth = getAuth(fApp);
+
+        const state = {
+            currentUser: null,
+            users: [],
+            tasks: [],
+            config: { departments: ['Generale', 'Sviluppo', 'Design'], teams: ['Alpha', 'Beta', 'Omega'] },
+            unsubscribeTasks: null
+        };
+
+        const dom = {
+            loading: document.getElementById('loading-overlay'),
+            container: document.getElementById('app-container'),
+            header: document.getElementById('main-header'),
+            views: {
+                login: document.getElementById('view-login'),
+                board: document.getElementById('view-board'),
+                admin: document.getElementById('view-admin')
+            },
+            modal: document.getElementById('modal-task')
+        };
+
+        window.app = {
+            init: async () => {
+                await signInAnonymously(auth);
+                await app.syncMetadata();
+                await app.loadUsers();
+                
+                // Crea utente test se non esiste
+                if (state.users.length === 0) {
+                    await app.createDefaultUser();
+                }
+
+                dom.loading.classList.add('hidden');
+                dom.container.classList.remove('hidden');
+                app.showView('login');
+            },
+
+            syncMetadata: async () => {
+                const snap = await getDoc(doc(db, 'quest_metadata', 'structure'));
+                if (snap.exists()) state.config = snap.data();
+                else await setDoc(doc(db, 'quest_metadata', 'structure'), state.config);
+            },
+
+            loadUsers: async () => {
+                const snap = await getDocs(collection(db, 'quest_users'));
+                state.users = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            },
+
+            createDefaultUser: async () => {
+                const defaultUser = {
+                    name: "Admin Tester",
+                    username: "test",
+                    password: "1234",
+                    role: "admin",
+                    department: "Generale",
+                    team: "Alpha",
+                    avatar: "https://ui-avatars.com/api/?name=Admin+Tester&background=943ddf&color=fff"
+                };
+                await addDoc(collection(db, 'quest_users'), defaultUser);
+                await app.loadUsers();
+            },
+
+            showView: (id) => {
+                Object.values(dom.views).forEach(v => v.classList.add('hidden'));
+                dom.views[id].classList.remove('hidden');
+                dom.views[id].classList.add('fade-in');
+            },
+
+            handleLogin: async (e) => {
+                e.preventDefault();
+                const userIn = document.getElementById('login-username').value.trim();
+                const passIn = document.getElementById('login-password').value.trim();
+
+                const found = state.users.find(u => u.username === userIn && u.password === passIn);
+
+                if (found) {
+                    state.currentUser = found;
+                    app.setupUserUI();
+                    app.showBoard();
+                    app.toast(`Benvenuto, ${found.name}`);
+                } else {
+                    app.toast("Credenziali errate!");
+                }
+            },
+
+            setupUserUI: () => {
+                dom.header.classList.remove('hidden');
+                document.getElementById('header-username').innerText = state.currentUser.name;
+                document.getElementById('header-role').innerText = state.currentUser.role;
+                document.getElementById('header-avatar').src = state.currentUser.avatar;
+                
+                if (state.currentUser.role === 'admin') {
+                    document.getElementById('btn-admin-panel').classList.remove('hidden');
+                    document.getElementById('btn-new-task').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-admin-panel').classList.add('hidden');
+                    document.getElementById('btn-new-task').classList.add('hidden');
+                }
+            },
+
+            showBoard: () => {
+                app.showView('board');
+                document.getElementById('board-context-info').innerText = `${state.currentUser.department} / ${state.currentUser.team}`;
+
+                const q = query(collection(db, 'quest_tasks'), 
+                    where('department', '==', state.currentUser.department), 
+                    where('team', '==', state.currentUser.team));
+
+                if(state.unsubscribeTasks) state.unsubscribeTasks();
+                state.unsubscribeTasks = onSnapshot(q, (snap) => {
+                    state.tasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    app.renderTasks();
+                });
+            },
+
+            renderTasks: () => {
+                const isAdmin = state.currentUser.role === 'admin';
+                const cols = { todo: [], doing: [], done: [] };
+                state.tasks.forEach(t => cols[t.status]?.push(t));
+
+                ['todo', 'doing', 'done'].forEach(key => {
+                    document.getElementById(`count-${key}`).innerText = cols[key].length;
+                    document.getElementById(`col-${key}`).innerHTML = cols[key].map(t => {
+                        const ass = state.users.find(u => u.id === t.assigneeId);
+                        return `
+                        <div draggable="${isAdmin}" ondragstart="app.dragStart(event, '${t.id}')" onclick="app.openTaskModal('${t.id}')" 
+                             class="bg-[#252525] p-4 rounded-xl border border-white/5 shadow-sm cursor-pointer hover:border-[#943ddf] transition-all">
+                            <h4 class="text-sm font-semibold text-white mb-2">${t.title}</h4>
+                            <div class="flex items-center gap-2 mt-4">
+                                <img src="${ass?.avatar}" class="w-5 h-5 rounded-full">
+                                <span class="text-[10px] text-gray-500 uppercase">${ass?.name || 'Nessuno'}</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                });
+            },
+
+            dragStart: (ev, id) => {
+                if (state.currentUser.role !== 'admin') return ev.preventDefault();
+                ev.dataTransfer.setData("text", id);
+            },
+            allowDrop: (ev) => ev.preventDefault(),
+            drop: async (ev, status) => {
+                const id = ev.dataTransfer.getData("text");
+                await updateDoc(doc(db, 'quest_tasks', id), { status });
+            },
+
+            openTaskModal: (taskId = null) => {
+                const isAdmin = state.currentUser.role === 'admin';
+                const form = document.getElementById('form-task');
+                form.reset();
+                
+                // Assignee list (squadra corrente)
+                const teamUsers = state.users.filter(u => u.team === state.currentUser.team);
+                document.getElementById('task-assignee').innerHTML = teamUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+
+                const inputs = form.querySelectorAll('input, textarea, select');
+                const notice = document.getElementById('task-readonly-notice');
+                const saveBtn = document.getElementById('btn-save-task');
+                const delBtn = document.getElementById('btn-delete-task');
+
+                if (!isAdmin) {
+                    inputs.forEach(i => i.disabled = true);
+                    notice.classList.remove('hidden');
+                    saveBtn.classList.add('hidden');
+                } else {
+                    inputs.forEach(i => i.disabled = false);
+                    notice.classList.add('hidden');
+                    saveBtn.classList.remove('hidden');
+                }
+
+                if (taskId) {
+                    const t = state.tasks.find(x => x.id === taskId);
+                    document.getElementById('task-id').value = t.id;
+                    document.getElementById('task-title').value = t.title;
+                    document.getElementById('task-desc').value = t.description;
+                    document.getElementById('task-status').value = t.status;
+                    document.getElementById('task-assignee').value = t.assigneeId;
+                    if(isAdmin) delBtn.classList.remove('hidden');
+                } else {
+                    document.getElementById('task-id').value = '';
+                    delBtn.classList.add('hidden');
+                }
+                dom.modal.classList.remove('hidden');
+            },
+
+            closeModal: () => dom.modal.classList.add('hidden'),
+
+            handleTaskSubmit: async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('task-id').value;
+                const data = {
+                    title: document.getElementById('task-title').value,
+                    description: document.getElementById('task-desc').value,
+                    assigneeId: document.getElementById('task-assignee').value,
+                    status: document.getElementById('task-status').value,
+                    department: state.currentUser.department,
+                    team: state.currentUser.team,
+                    updatedAt: serverTimestamp()
+                };
+
+                if(id) await updateDoc(doc(db, 'quest_tasks', id), data);
+                else {
+                    data.createdAt = serverTimestamp();
+                    await addDoc(collection(db, 'quest_tasks'), data);
+                }
+                app.closeModal();
+            },
+
+            deleteTask: async () => {
+                const id = document.getElementById('task-id').value;
+                if(confirm('Eliminare task?')) {
+                    await deleteDoc(doc(db, 'quest_tasks', id));
+                    app.closeModal();
+                }
+            },
+
+            // ADMIN LOGIC
+            showAdmin: () => {
+                const dSel = document.getElementById('admin-dept');
+                const tSel = document.getElementById('admin-team');
+                dSel.innerHTML = state.config.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+                tSel.innerHTML = state.config.teams.map(t => `<option value="${t}">${t}</option>`).join('');
+                
+                app.renderAdminUsersList();
+                app.showView('admin');
+            },
+
+            renderAdminUsersList: () => {
+                const tbody = document.getElementById('admin-table-body');
+                tbody.innerHTML = state.users.map(u => `
+                    <tr>
+                        <td class="p-4">
+                            <div class="font-bold text-white">${u.name}</div>
+                            <div class="text-[10px] text-gray-500">@${u.username} | ${u.password}</div>
+                        </td>
+                        <td class="p-4 text-xs text-gray-400">
+                            ${u.department} / ${u.team} <br>
+                            <span class="text-[#943ddf]">${u.role}</span>
+                        </td>
+                        <td class="p-4">
+                            <button onclick="app.editUser('${u.id}')" class="text-blue-400 mr-3"><i class="fas fa-edit"></i></button>
+                            <button onclick="app.deleteUser('${u.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            handleUserSave: async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('admin-uid').value;
+                const name = document.getElementById('admin-displayname').value;
+                const user = {
+                    name,
+                    username: document.getElementById('admin-username').value,
+                    password: document.getElementById('admin-password').value,
+                    department: document.getElementById('admin-dept').value,
+                    team: document.getElementById('admin-team').value,
+                    role: document.getElementById('admin-role').value,
+                    avatar: `https://ui-avatars.com/api/?name=${name}&background=random&color=fff`
+                };
+
+                if(id) await updateDoc(doc(db, 'quest_users', id), user);
+                else await addDoc(collection(db, 'quest_users'), user);
+                
+                app.resetAdminForm();
+                await app.loadUsers();
+                app.renderAdminUsersList();
+                app.toast("Database Aggiornato");
+            },
+
+            editUser: (uid) => {
+                const u = state.users.find(x => x.id === uid);
+                document.getElementById('admin-uid').value = u.id;
+                document.getElementById('admin-displayname').value = u.name;
+                document.getElementById('admin-username').value = u.username;
+                document.getElementById('admin-password').value = u.password;
+                document.getElementById('admin-dept').value = u.department;
+                document.getElementById('admin-team').value = u.team;
+                document.getElementById('admin-role').value = u.role;
+            },
+
+            deleteUser: async (uid) => {
+                if(confirm('Eliminare utente?')) {
+                    await deleteDoc(doc(db, 'quest_users', uid));
+                    await app.loadUsers();
+                    app.renderAdminUsersList();
+                }
+            },
+
+            resetAdminForm: () => {
+                document.getElementById('admin-form').reset();
+                document.getElementById('admin-uid').value = '';
+            },
+
+            logout: () => {
+                location.reload();
+            },
+
+            toast: (msg) => {
+                const div = document.createElement('div');
+                div.className = "p-3 rounded-lg bg-[#943ddf] text-white text-xs shadow-xl fade-in border border-white/10";
+                div.innerText = msg;
+                document.getElementById('toast-container').appendChild(div);
+                setTimeout(() => div.remove(), 3000);
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
