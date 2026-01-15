@@ -299,7 +299,7 @@
         </div>
     </div>
     
-      <!-- SCRIPT -->
+  <!-- SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getFirestore, collection, addDoc, getDoc, setDoc, getDocs, doc, updateDoc, deleteDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
@@ -340,24 +340,32 @@
 
         window.app = {
             init: async () => {
-                await signInAnonymously(auth);
-                await app.syncMetadata();
-                await app.loadUsers();
-                
-                // Crea utente test se non esiste
-                if (state.users.length === 0) {
-                    await app.createDefaultUser();
-                }
+                try {
+                    await signInAnonymously(auth);
+                    await app.syncMetadata();
+                    await app.loadUsers();
+                    
+                    if (state.users.length === 0) {
+                        await app.createDefaultUser();
+                    }
 
-                dom.loading.classList.add('hidden');
-                dom.container.classList.remove('hidden');
-                app.showView('login');
+                    dom.loading.classList.add('hidden');
+                    dom.container.classList.remove('hidden');
+                    app.showView('login');
+                } catch (err) {
+                    console.error("Init error:", err);
+                    alert("Errore di inizializzazione DB. Controlla la console.");
+                }
             },
 
             syncMetadata: async () => {
-                const snap = await getDoc(doc(db, 'quest_metadata', 'structure'));
-                if (snap.exists()) state.config = snap.data();
-                else await setDoc(doc(db, 'quest_metadata', 'structure'), state.config);
+                try {
+                    const snap = await getDoc(doc(db, 'quest_metadata', 'structure'));
+                    if (snap.exists()) state.config = snap.data();
+                    else await setDoc(doc(db, 'quest_metadata', 'structure'), state.config);
+                } catch (e) {
+                    console.warn("Metadata sync warning:", e);
+                }
             },
 
             loadUsers: async () => {
@@ -390,15 +398,38 @@
                 const userIn = document.getElementById('login-username').value.trim();
                 const passIn = document.getElementById('login-password').value.trim();
 
-                const found = state.users.find(u => u.username === userIn && u.password === passIn);
+                console.log("Tentativo Login per:", userIn);
 
-                if (found) {
-                    state.currentUser = found;
-                    app.setupUserUI();
-                    app.showBoard();
-                    app.toast(`Benvenuto, ${found.name}`);
-                } else {
-                    app.toast("Credenziali errate!");
+                try {
+                    // Fetch diretto dal DB per evitare cache o dati vecchi
+                    const q = query(collection(db, 'quest_users'), where('username', '==', userIn));
+                    const querySnapshot = await getDocs(q);
+
+                    if (querySnapshot.empty) {
+                        console.log("Utente non trovato nel DB.");
+                        app.toast("Utente non trovato!");
+                        return;
+                    }
+
+                    // Prende il primo risultato
+                    const userDoc = querySnapshot.docs[0];
+                    const userData = userDoc.data();
+
+                    console.log("Trovato utente:", userData.username);
+
+                    // Confronto password
+                    if (userData.password === passIn) {
+                        state.currentUser = { id: userDoc.id, ...userData };
+                        app.setupUserUI();
+                        app.showBoard();
+                        app.toast(`Benvenuto, ${userData.name}`);
+                    } else {
+                        console.log("Password errata.");
+                        app.toast("Password errata!");
+                    }
+                } catch (error) {
+                    console.error("Errore Login:", error);
+                    app.toast("Errore durante il login. Vedi console.");
                 }
             },
 
@@ -571,8 +602,8 @@
                 const name = document.getElementById('admin-displayname').value;
                 const user = {
                     name,
-                    username: document.getElementById('admin-username').value,
-                    password: document.getElementById('admin-password').value,
+                    username: document.getElementById('admin-username').value.trim(),
+                    password: document.getElementById('admin-password').value.trim(),
                     department: document.getElementById('admin-dept').value,
                     team: document.getElementById('admin-team').value,
                     role: document.getElementById('admin-role').value,
